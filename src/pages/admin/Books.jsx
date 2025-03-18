@@ -15,8 +15,8 @@ const BookForm = ({ onSubmit, initialData = null, onCancel }) => {
     author: initialData?.author || "",
     category_name: initialData?.category_name || "",
     description: initialData?.description || "",
-    book_file: initialData?.book_file || null,
-    cover_image: initialData?.cover_image || null,
+    book_file: null,
+    cover_image: null,
   });
 
   const { data: categories = [] } = useQuery({
@@ -34,13 +34,7 @@ const BookForm = ({ onSubmit, initialData = null, onCancel }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const data = new FormData();
-    Object.entries(formData).forEach(([key, value]) => {
-      if (value) {
-        data.append(key, value);
-      }
-    });
-    onSubmit(data);
+    onSubmit(formData);
   };
 
   return (
@@ -83,16 +77,20 @@ const BookForm = ({ onSubmit, initialData = null, onCancel }) => {
           </select>
         </div>
         <Input
-          label="Book File (.pdf)"
+          label={`Book File ${
+            initialData ? "(Leave empty to keep current file)" : ""
+          }`}
           id="book_file"
           name="book_file"
           type="file"
           onChange={handleChange}
-          accept=".pdf,.epub,.doc,.mobi,.rtf,.azw"
+          accept=".pdf"
           required={!initialData}
         />
         <Input
-          label="Cover Image (.jpeg, .png, .gif)"
+          label={`Cover Image ${
+            initialData ? "(Leave empty to keep current image)" : ""
+          }`}
           id="cover_image"
           name="cover_image"
           type="file"
@@ -151,8 +149,14 @@ const Books = () => {
       setIsAddingBook(false);
       toast.success("Book added successfully");
     },
-    onError: () => {
-      toast.error("Failed to add book");
+    onError: (error) => {
+      console.error("Add Book Error:", error);
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to add book";
+      toast.error(errorMessage);
     },
   });
 
@@ -163,8 +167,13 @@ const Books = () => {
       setEditingBook(null);
       toast.success("Book updated successfully");
     },
-    onError: () => {
-      toast.error("Failed to update book");
+    onError: (error) => {
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to update book";
+      toast.error(errorMessage);
     },
   });
 
@@ -172,6 +181,15 @@ const Books = () => {
     mutationFn: (id) => booksAPI.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries(["books"]);
+      Swal.fire({
+        title: "Deleted!",
+        text: "Book has been deleted.",
+        icon: "success",
+      });
+    },
+    onError: (error) => {
+      console.error("Delete Book Error:", error);
+      toast.error("Failed to delete book");
     },
   });
 
@@ -187,11 +205,6 @@ const Books = () => {
     }).then((result) => {
       if (result.isConfirmed) {
         deleteBookMutation.mutate(bookId);
-        Swal.fire({
-          title: "Deleted!",
-          text: "Book has been deleted.",
-          icon: "success",
-        });
       }
     });
   };
@@ -231,7 +244,12 @@ const Books = () => {
             </option>
           ))}
         </select>
-        <Button onClick={() => setIsAddingBook(true)}>
+        <Button
+          onClick={(e) => {
+            e.preventDefault();
+            setIsAddingBook(true);
+          }}
+        >
           <PlusIcon className="w-5 h-5 mr-2" />
           Add Book
         </Button>

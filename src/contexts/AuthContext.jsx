@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }) => {
         toast.error(error.response?.data?.error || "Login failed");
         return false;
       }
-    },
+    }, 
     [navigate]
   );
 

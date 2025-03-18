@@ -117,14 +117,14 @@ const Categories = () => {
       showCancelButton: true,
       confirmButtonColor: "#3085d6",
       cancelButtonColor: "#d33",
-      confirmButtonText: "Yes, delete it!"
+      confirmButtonText: "Yes, delete it!",
     }).then((result) => {
       if (result.isConfirmed) {
         deleteCategoryMutation.mutate(categoryId);
         Swal.fire({
           title: "Deleted!",
           text: "Category has been deleted.",
-          icon: "success"
+          icon: "success",
         });
       }
     });
@@ -152,7 +152,12 @@ const Categories = () => {
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <Button onClick={() => setIsAddingCategory(true)}>
+        <Button
+          onClick={(e) => {
+            e.preventDefault();
+            setIsAddingCategory(true);
+          }}
+        >
           <PlusIcon className="w-5 h-5 mr-2" />
           Add Category
         </Button>

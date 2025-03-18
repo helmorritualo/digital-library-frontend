@@ -37,6 +37,15 @@ api.interceptors.request.use(
 
     if (!(config.data instanceof FormData)) {
       config.headers["Content-Type"] = "application/json";
+    } else {
+      // Make sure to remove the Content-Type header for FormData
+      // as the browser will set it correctly with the boundary
+      delete config.headers["Content-Type"];
+    }
+
+    // Clean up any malformed URLs (like the ":1" issue)
+    if (config.url) {
+      config.url = config.url.replace(/:\d+$/, "");
     }
 
     return config;
@@ -66,11 +75,14 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Handle 401 Unauthorized errors
     if (error.response?.status === 401) {
+      console.log("Authentication error - clearing credentials");
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/login";
     }
+
     return Promise.reject(error);
   }
 );
@@ -86,14 +98,13 @@ export const booksAPI = {
     }),
   search: (query) => api.get(`/books?q=${encodeURIComponent(query)}`),
   create: (formData) => api.post("/books", formData),
-  update: (id, formData) => api.put(`/books/${id}`, formData),
+  update: (id, data) => api.put(`/books/${id}`, data),
   delete: (id) => api.delete(`/books/${id}`),
   download: (id) =>
     api.get(`/books/${id}/download`, {
       responseType: "blob",
       headers: {
-        Accept:
-          "application/pdf",
+        Accept: "application/pdf",
       },
     }),
 };

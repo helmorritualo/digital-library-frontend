@@ -49,7 +49,7 @@ const MainLayout = () => {
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-[0.9rem]">
-            <h1 className="text-xl font-bold text-blue-600">Digital Library</h1>
+            <h1 className="text-2xl font-bold text-blue-600">Digital Library</h1>
             <button
               className="lg:hidden"
               onClick={() => setIsSidebarOpen(false)}
@@ -78,7 +78,7 @@ const MainLayout = () => {
             {isAdmin && (
               <>
                 <div className="mb-2 px-4 text-xs font-semibold text-gray-400 uppercase">
-                  Admin
+                  Admin Menu
                 </div>
                 {adminNavigation.map((item) => (
                   <Link
@@ -148,7 +148,7 @@ const MainLayout = () => {
 
               {/* Dropdown Menu */}
               {isProfileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-28 bg-white rounded-md shadow-lg py-1 ring-1 ring-blue-500/50">
+                <div className="absolute right-0 mt-2 w-35 bg-white rounded-md drop-shadow-lg py-1">
                   <Link
                     to="/profile"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

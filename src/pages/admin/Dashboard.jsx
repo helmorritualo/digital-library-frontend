@@ -8,6 +8,8 @@ import {
   ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import { booksAPI, usersAPI, categoriesAPI } from "../../services/api";
+import manProfilePic from "../../assets/man.png";
+import womanProfilePic from "../../assets/woman.png";
 
 const AdminLayout = lazy(() => import("../../layouts/AdminLayout"));
 
@@ -99,29 +101,36 @@ const Dashboard = () => {
                   Recently Added Books
                 </h3>
                 <div className="space-y-4">
-                  {books.slice(0, 5).map((book) => (
-                    <Link
-                      key={book.id}
-                      to={`/books/${book.id}`}
-                      className="block hover:bg-gray-50 -mx-4 px-4 py-2"
-                    >
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                          <img
-                            src={book.cover_image_path}
-                            alt={book.title}
-                            className="w-10 h-10 object-cover rounded"
-                          />
+                  {books
+                    .slice(0, 5)
+                    .sort(
+                      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+                    )
+                    .map((book) => (
+                      <Link
+                        key={book.id}
+                        to={`/books/${book.id}`}
+                        className="block hover:bg-gray-50 -mx-4 px-4 py-2"
+                      >
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0">
+                            <img
+                              src={book.cover_image_path}
+                              alt={book.title}
+                              className="w-10 h-10 object-cover rounded"
+                            />
+                          </div>
+                          <div className="ml-4">
+                            <p className="text-sm font-medium text-gray-900">
+                              {book.title}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {book.author}
+                            </p>
+                          </div>
                         </div>
-                        <div className="ml-4">
-                          <p className="text-sm font-medium text-gray-900">
-                            {book.title}
-                          </p>
-                          <p className="text-sm text-gray-500">{book.author}</p>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
+                      </Link>
+                    ))}
                 </div>
               </div>
 
@@ -131,26 +140,33 @@ const Dashboard = () => {
                   Recently Registered Users
                 </h3>
                 <div className="space-y-4">
-                  {users.slice(0, 5).map((user) => (
-                    <div
-                      key={user.id}
-                      className="flex items-center -mx-4 px-4 py-2"
-                    >
-                      <div className="flex-shrink-0">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                          <span className="text-blue-600 font-medium">
-                            {user.username.charAt(0).toUpperCase()}
-                          </span>
+                  {users
+                    .filter((user) => user.role !== "admin")
+                    .sort(
+                      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+                    )
+                    .slice(0, 5)
+                    .map((user) => (
+                      <div
+                        key={user.id}
+                        className="flex items-center -mx-4 px-4 py-2"
+                      >
+                        <div className="flex-shrink-0">
+                          <img src=
+                          {user?.gender === "female"
+                            ? womanProfilePic
+                            : manProfilePic}
+                          alt="Profile" className="w-8 h-8 rounded-full
+                          object-cover border-2 border-blue-100" />
+                        </div>
+                        <div className="ml-4">
+                          <p className="text-sm font-medium text-gray-900">
+                            {user.full_name}
+                          </p>
+                          <p className="text-sm text-gray-500">{user.email}</p>
                         </div>
                       </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-900">
-                          {user.full_name}
-                        </p>
-                        <p className="text-sm text-gray-500">{user.email}</p>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </div>
             </div>
