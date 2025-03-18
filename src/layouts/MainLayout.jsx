@@ -23,7 +23,7 @@ const MainLayout = () => {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const location = useLocation();
 
-  const navigation = [
+  const readerNavigation = [
     { name: "Books", href: "/", icon: HomeIcon },
     { name: "Bookmarks", href: "/bookmarks", icon: BookmarkIcon },
     { name: "Profile", href: "/profile", icon: UserIcon },
@@ -34,7 +34,7 @@ const MainLayout = () => {
     { name: "Users", href: "/admin/users", icon: UsersIcon },
     { name: "Books", href: "/admin/books", icon: BookOpenIcon },
     { name: "Categories", href: "/admin/categories", icon: FolderIcon },
-    { name: "Profile", href: "/profile", icon: UserIcon },
+    { name: "Profile", href: "admin/profile", icon: UserIcon },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -60,7 +60,7 @@ const MainLayout = () => {
 
           <nav className="flex-1 p-4 space-y-1">
             {!isAdmin &&
-              navigation.map((item) => (
+              readerNavigation.map((item) => (
                 <Link
                   key={item.name}
                   to={item.href}
