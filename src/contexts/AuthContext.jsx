@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { profileAPI } from "../services/api";
 import axios from "axios";
+import LoadingAnimation from "../components/LoadingAnimation";
 
 const AuthContext = createContext(null);
 
@@ -137,7 +138,7 @@ export const AuthProvider = ({ children }) => {
   );
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <LoadingAnimation/>;
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

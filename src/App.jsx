@@ -7,6 +7,8 @@ import { AuthProvider } from "./contexts/AuthContext";
 // Layouts
 const MainLayout = lazy(() => import("./layouts/MainLayout"));
 
+import LoadingAnimation from "./components/LoadingAnimation";
+
 // Pages
 const Home = lazy(() => import("./pages/Home"));
 const Login = lazy(() => import("./pages/Login"));
@@ -37,7 +39,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Router>
         <AuthProvider>
-          <Suspense fallback={<div>Loading...</div>}>
+          <Suspense fallback={<LoadingAnimation />}>
             <Routes>
               <Route path="/" element={<MainLayout />}>
                 <Route index element={<Home />} />
