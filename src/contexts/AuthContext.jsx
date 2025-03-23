@@ -5,12 +5,13 @@ import {
   useEffect,
   useMemo,
   useCallback,
+  lazy
 } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { profileAPI } from "../services/api";
 import axios from "axios";
-import LoadingAnimation from "../components/LoadingAnimation";
+const LoadingAnimation = lazy(() => import("../components/LoadingAnimation"));
 
 const AuthContext = createContext(null);
 

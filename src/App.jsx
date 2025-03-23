@@ -7,7 +7,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 // Layouts
 const MainLayout = lazy(() => import("./layouts/MainLayout"));
 
-import LoadingAnimation from "./components/LoadingAnimation";
+const LoadingAnimation = lazy(() => import("./components/LoadingAnimation"));
 
 // Pages
 const Home = lazy(() => import("./pages/Home"));
