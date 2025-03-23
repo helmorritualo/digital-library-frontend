@@ -50,16 +50,14 @@ src/
 
 ## Getting Started
 
-1. Clone the repository
-2. Install dependencies:
+1. Clone the repository:
    ```bash
-   npm install
+   git clone https://github.com/helmorritualo/digital-library-frontend.git
    ```
-3. Start the development server:
+2. Start the development server:
    ```bash
    npm run dev
    ```
-
 ## Features in Detail
 
 ### Authentication
@@ -90,3 +88,5 @@ src/
 - Recent activity tracking
 - User management
 - Book and category management
+
+
