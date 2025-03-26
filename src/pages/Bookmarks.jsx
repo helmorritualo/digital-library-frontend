@@ -5,12 +5,12 @@ import toast from "react-hot-toast";
 
 const Bookmarks = () => {
   const {
-    data: bookmarks = [],
+    data: bookmarkData = { books: [] },
     isLoading,
     refetch: refetchBookmarks,
   } = useQuery({
     queryKey: ["bookmarks"],
-    queryFn: () => bookmarksAPI.getAll().then((res) => res.data.books),
+    queryFn: () => bookmarksAPI.getAll(),
   });
 
   const handleToggleBookmark = async (bookId) => {
@@ -19,7 +19,9 @@ const Bookmarks = () => {
       toast.success("Book removed from bookmarks");
       refetchBookmarks();
     } catch (error) {
-      toast.error(`Failed to remove bookmark ${error}`);
+      const errorMessage =
+        error.response?.data?.error || "Failed to remove bookmark";
+      toast.error(errorMessage);
     }
   };
 
@@ -34,7 +36,7 @@ const Bookmarks = () => {
 
       {isLoading ? (
         <div className="text-center py-12">Loading bookmarks...</div>
-      ) : bookmarks.length === 0 ? (
+      ) : !bookmarkData?.books?.length ? (
         <div className="text-center py-12">
           <p className="text-gray-600">You haven't bookmarked any books yet.</p>
           <p className="text-sm text-gray-500 mt-2">
@@ -43,7 +45,7 @@ const Bookmarks = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {bookmarks.map((book) => (
+          {bookmarkData.books.map((book) => (
             <BookCard
               key={book.id}
               book={book}

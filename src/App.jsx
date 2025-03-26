@@ -5,21 +5,21 @@ import { lazy, Suspense } from "react";
 import { AuthProvider } from "./contexts/AuthContext";
 
 // Layouts
-const MainLayout = lazy(() => import("./layouts/MainLayout"));
+import MainLayout from "./layouts/MainLayout";
 
 const LoadingAnimation = lazy(() => import("./components/LoadingAnimation"));
 
 // Pages
-const Home = lazy(() => import("./pages/Home"));
-const Login = lazy(() => import("./pages/Login"));
-const Register = lazy(() => import("./pages/Register"));
-const BookDetails = lazy(() => import("./pages/BookDetails"));
-const Profile = lazy(() => import("./pages/Profile"));
-const Bookmarks = lazy(() => import("./pages/Bookmarks"));
-const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
-const AdminUsers = lazy(() => import("./pages/admin/Users"));
-const AdminBooks = lazy(() => import("./pages/admin/Books"));
-const AdminCategories = lazy(() => import("./pages/admin/Categories"));
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import BookDetails from "./pages/BookDetails";
+import Profile from "./pages/Profile";
+import Bookmarks from "./pages/Bookmarks";
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminUsers from "./pages/admin/Users";
+import AdminBooks from "./pages/admin/Books";
+import AdminCategories from "./pages/admin/Categories";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,7 +47,6 @@ function App() {
                 <Route path="bookmarks" element={<Bookmarks />} />
                 <Route path="profile" element={<Profile />} />
 
-                {/* Admin Routes */}
                 <Route path="admin">
                   <Route index element={<AdminDashboard />} />
                   <Route path="users" element={<AdminUsers />} />
@@ -57,7 +56,6 @@ function App() {
                 </Route>
               </Route>
 
-              {/* Auth Routes */}
               <Route path="login" element={<Login />} />
               <Route path="register" element={<Register />} />
             </Routes>

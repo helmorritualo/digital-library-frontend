@@ -14,6 +14,16 @@ const CategoryForm = ({ onSubmit, initialData = null, onCancel }) => {
     category_name: initialData?.category_name || "",
     description: initialData?.description || "",
   });
+  const [errors, setErrors] = useState({});
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.category_name.trim()) {
+      newErrors.category_name = "Category name is required";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -21,11 +31,20 @@ const CategoryForm = ({ onSubmit, initialData = null, onCancel }) => {
       ...prev,
       [name]: value,
     }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    if (validateForm()) {
+      onSubmit(formData);
+    }
   };
 
   return (
@@ -37,6 +56,7 @@ const CategoryForm = ({ onSubmit, initialData = null, onCancel }) => {
         value={formData.category_name}
         onChange={handleChange}
         required
+        error={errors.category_name}
       />
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -48,7 +68,6 @@ const CategoryForm = ({ onSubmit, initialData = null, onCancel }) => {
           rows={4}
           value={formData.description}
           onChange={handleChange}
-          required
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
@@ -82,8 +101,10 @@ const Categories = () => {
       setIsAddingCategory(false);
       toast.success("Category added successfully");
     },
-    onError: () => {
-      toast.error("Failed to add category");
+    onError: (error) => {
+      const errorMessage =
+        error.response?.data?.error || "Failed to add category";
+      toast.error(errorMessage);
     },
   });
 
@@ -94,8 +115,10 @@ const Categories = () => {
       setEditingCategory(null);
       toast.success("Category updated successfully");
     },
-    onError: () => {
-      toast.error("Failed to update category");
+    onError: (error) => {
+      const errorMessage =
+        error.response?.data?.error || "Failed to update category";
+      toast.error(errorMessage);
     },
   });
 
@@ -103,9 +126,16 @@ const Categories = () => {
     mutationFn: (id) => categoriesAPI.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries(["categories"]);
+      Swal.fire({
+        title: "Deleted!",
+        text: "Category has been deleted.",
+        icon: "success",
+      });
     },
-    onError: () => {
-      toast.error("Failed to delete category");
+    onError: (error) => {
+      const errorMessage =
+        error.response?.data?.error || "Failed to delete category";
+      toast.error(errorMessage);
     },
   });
 
@@ -121,11 +151,6 @@ const Categories = () => {
     }).then((result) => {
       if (result.isConfirmed) {
         deleteCategoryMutation.mutate(categoryId);
-        Swal.fire({
-          title: "Deleted!",
-          text: "Category has been deleted.",
-          icon: "success",
-        });
       }
     });
   };
@@ -136,7 +161,8 @@ const Categories = () => {
       category.category_name
         .toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
-      category.description.toLowerCase().includes(searchQuery.toLowerCase())
+      (category.description &&
+        category.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (

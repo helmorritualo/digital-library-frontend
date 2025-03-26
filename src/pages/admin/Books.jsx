@@ -1,4 +1,4 @@
-import { useState, lazy } from "react";
+import { useState, lazy, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { booksAPI, categoriesAPI } from "../../services/api";
@@ -13,16 +13,77 @@ const BookForm = ({ onSubmit, initialData = null, onCancel }) => {
   const [formData, setFormData] = useState({
     title: initialData?.title || "",
     author: initialData?.author || "",
-    category_name: initialData?.category_name || "",
+    category_id: initialData?.category_id || "",
     description: initialData?.description || "",
     book_file: null,
     cover_image: null,
   });
+  const [errors, setErrors] = useState({});
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: () => categoriesAPI.getAll().then((res) => res.data.categories),
   });
+
+  const validateForm = () => {
+    const newErrors = {};
+    const maxFileSize = 50 * 1024 * 1024; // 50MB
+    const maxImageSize = 5 * 1024 * 1024; // 5MB
+    const allowedFileTypes = [
+      "application/pdf",
+      "application/epub+zip",
+      "application/msword",
+      "application/vnd.amazon.ebook",
+      "application/rtf",
+    ];
+    const allowedImageTypes = ["image/jpeg", "image/png", "image/gif"];
+
+    if (!formData.title) {
+      newErrors.title = "Title is required";
+    }
+
+    if (!formData.author) {
+      newErrors.author = "Author is required";
+    }
+
+    if (!initialData) {
+      if (!formData.book_file) {
+        newErrors.book_file = "Book file is required";
+      } else if (formData.book_file.size > maxFileSize) {
+        newErrors.book_file = "File size must not exceed 50MB";
+      } else if (!allowedFileTypes.includes(formData.book_file.type)) {
+        newErrors.book_file =
+          "File must be in PDF, EPUB, DOC, MOBI, RTF, or AZW format";
+      }
+
+      if (!formData.cover_image) {
+        newErrors.cover_image = "Cover image is required";
+      } else if (formData.cover_image.size > maxImageSize) {
+        newErrors.cover_image = "Image size must not exceed 5MB";
+      } else if (!allowedImageTypes.includes(formData.cover_image.type)) {
+        newErrors.cover_image = "Image must be in JPEG, PNG, or GIF format";
+      }
+    } else {
+      if (
+        formData.book_file &&
+        (formData.book_file.size > maxFileSize ||
+          !allowedFileTypes.includes(formData.book_file.type))
+      ) {
+        newErrors.book_file = "Invalid file format or size exceeds 50MB";
+      }
+
+      if (
+        formData.cover_image &&
+        (formData.cover_image.size > maxImageSize ||
+          !allowedImageTypes.includes(formData.cover_image.type))
+      ) {
+        newErrors.cover_image = "Invalid image format or size exceeds 5MB";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleChange = (e) => {
     const { name, value, type, files } = e.target;
@@ -30,11 +91,20 @@ const BookForm = ({ onSubmit, initialData = null, onCancel }) => {
       ...prev,
       [name]: type === "file" ? files[0] : value,
     }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    if (validateForm()) {
+      onSubmit(formData);
+    }
   };
 
   return (
@@ -47,6 +117,7 @@ const BookForm = ({ onSubmit, initialData = null, onCancel }) => {
           value={formData.title}
           onChange={handleChange}
           required
+          error={errors.title}
         />
         <Input
           label="Author"
@@ -55,22 +126,22 @@ const BookForm = ({ onSubmit, initialData = null, onCancel }) => {
           value={formData.author}
           onChange={handleChange}
           required
+          error={errors.author}
         />
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Category
           </label>
           <select
-            id="category_name"
-            name="category_name"
-            value={formData.category_name}
+            id="category_id"
+            name="category_id"
+            value={formData.category_id}
             onChange={handleChange}
-            required
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Select category</option>
             {categories.map((category) => (
-              <option key={category.id} value={category.category_name}>
+              <option key={category.id} value={category.id}>
                 {category.category_name}
               </option>
             ))}
@@ -84,8 +155,10 @@ const BookForm = ({ onSubmit, initialData = null, onCancel }) => {
           name="book_file"
           type="file"
           onChange={handleChange}
-          accept=".pdf"
+          accept=".pdf,.epub,.doc,.docx,.mobi,.rtf,.azw"
           required={!initialData}
+          error={errors.book_file}
+          help="Allowed formats: PDF, EPUB, DOC, MOBI, RTF, AZW (max 50MB)"
         />
         <Input
           label={`Cover Image ${
@@ -97,6 +170,8 @@ const BookForm = ({ onSubmit, initialData = null, onCancel }) => {
           onChange={handleChange}
           accept="image/*"
           required={!initialData}
+          error={errors.cover_image}
+          help="Allowed formats: JPEG, PNG, GIF (max 5MB)"
         />
       </div>
       <div>
@@ -109,7 +184,6 @@ const BookForm = ({ onSubmit, initialData = null, onCancel }) => {
           rows={4}
           value={formData.description}
           onChange={handleChange}
-          required
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
@@ -122,6 +196,77 @@ const BookForm = ({ onSubmit, initialData = null, onCancel }) => {
         </Button>
       </div>
     </form>
+  );
+};
+
+const BookTableRow = ({ book, onEdit, onDelete }) => {
+  const [coverUrl, setCoverUrl] = useState(null);
+  const defaultImagePath = "/book.png";
+
+  useEffect(() => {
+    const fetchCover = async () => {
+      try {
+        const response = await booksAPI.getCover(book.id);
+        const blob = new Blob([response.data], {
+          type: response.headers["content-type"],
+        });
+        const url = URL.createObjectURL(blob);
+        setCoverUrl(url);
+      } catch (error) {
+        console.error("Error loading cover:", error);
+        setCoverUrl(defaultImagePath);
+      }
+    };
+
+    fetchCover();
+
+    return () => {
+      if (coverUrl && coverUrl !== defaultImagePath) {
+        URL.revokeObjectURL(coverUrl);
+      }
+    };
+  }, [book.id, coverUrl]);
+
+  return (
+    <tr key={book.id}>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className="flex-shrink-0 h-10 w-10">
+            <img
+              src={coverUrl || defaultImagePath}
+              alt={book.title}
+              className="h-10 w-10 rounded object-cover"
+              onError={(e) => {
+                e.target.src = defaultImagePath;
+                e.target.onerror = null;
+              }}
+            />
+          </div>
+          <div className="ml-4">
+            <div className="text-sm font-medium text-gray-900">
+              {book.title}
+            </div>
+            <div className="text-sm text-gray-500">{book.author}</div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          {book.category_name}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        {new Date(book.created_at).toLocaleDateString()}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+        <Button variant="secondary" size="sm" onClick={() => onEdit(book)}>
+          Edit
+        </Button>
+        <Button variant="danger" size="sm" onClick={() => onDelete(book.id)}>
+          Delete
+        </Button>
+      </td>
+    </tr>
   );
 };
 
@@ -317,54 +462,12 @@ const Books = () => {
                 </tr>
               ) : (
                 filteredBooks.map((book) => (
-                  <tr key={book.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <img
-                            src={book.cover_image_path}
-                            alt={book.title}
-                            className="h-10 w-10 rounded object-cover"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                            }}
-                          />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {book.title}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {book.author}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {book.category_name}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(book.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setEditingBook(book)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => handleDeleteBook(book.id)}
-                      >
-                        Delete
-                      </Button>
-                    </td>
-                  </tr>
+                  <BookTableRow
+                    key={book.id}
+                    book={book}
+                    onEdit={setEditingBook}
+                    onDelete={handleDeleteBook}
+                  />
                 ))
               )}
             </tbody>

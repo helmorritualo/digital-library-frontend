@@ -35,19 +35,6 @@ A modern web-based digital library application built with React and TailwindCSS 
 - **PDF Handling**: React PDF
 - **Confirmation Dialogs**: SweetAlert2
 
-## Project Structure
-
-```
-src/
-├── components/       # Reusable UI components
-├── contexts/        # React contexts (Auth)
-├── layouts/         # Layout components
-├── pages/          # Application pages
-│   └── admin/      # Admin-specific pages
-├── services/       # API services
-└── assets/         # Static assets
-```
-
 ## Getting Started
 
 1. Clone the repository:

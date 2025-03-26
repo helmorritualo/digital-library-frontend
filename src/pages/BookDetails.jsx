@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy } from "react";
+import { useState, useEffect, lazy, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { BookmarkIcon as BookmarkOutline } from "@heroicons/react/24/outline";
@@ -12,9 +12,10 @@ const BookDetails = () => {
   const { id } = useParams();
   const [showContent, setShowContent] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [pdfBlob, setPdfBlob] = useState(null);
-  const [pdfObjectUrl, setPdfObjectUrl] = useState(null);
+  const [pdfUrl, setPdfUrl] = useState(null);
   const [pdfError, setPdfError] = useState(null);
+  const [coverUrl, setCoverUrl] = useState(null);
+  const defaultImagePath = "/book.png";
 
   const {
     data: book,
@@ -34,50 +35,77 @@ const BookDetails = () => {
 
   const isBookmarked = bookmarks.some((b) => b.id === Number(id));
 
-  // Clean up the object URL when component unmounts or when we hide content
-  useEffect(() => {
-    return () => {
-      if (pdfObjectUrl) {
-        URL.revokeObjectURL(pdfObjectUrl);
-      }
-    };
-  }, [pdfObjectUrl]);
-
-  // Reset PDF state when toggling content visibility
-  useEffect(() => {
-    if (!showContent && pdfObjectUrl) {
-      URL.revokeObjectURL(pdfObjectUrl);
-      setPdfObjectUrl(null);
-      setPdfBlob(null);
-    }
-  }, [showContent, pdfObjectUrl]);
-
-  // Fetch PDF when showing content
-  useEffect(() => {
-    if (showContent && book?.file_path && !pdfBlob) {
-      fetchPdf();
-    }
-  }, [showContent, book?.file_path, pdfBlob]);
-
-  const fetchPdf = async () => {
+  const fetchPdf = useCallback(async () => {
     try {
       setPdfError(null);
       const response = await booksAPI.download(id);
 
+      // Check if response is a PDF
+      const contentType = response.headers?.["content-type"];
+      if (!contentType || !contentType.includes("application/pdf")) {
+        throw new Error("Invalid file format. Expected PDF.");
+      }
+
       // Create a blob from the response data
       const blob = new Blob([response.data], { type: "application/pdf" });
-
-      // Create an object URL from the blob
       const url = URL.createObjectURL(blob);
-
-      setPdfBlob(blob);
-      setPdfObjectUrl(url);
+      setPdfUrl(url);
     } catch (error) {
       console.error("Failed to fetch PDF:", error);
-      setPdfError("Failed to load PDF. Try downloading instead.");
+      setPdfError(
+        error.message || "Failed to load PDF. Try downloading instead."
+      );
       toast.error("Failed to load PDF. Try downloading instead.");
     }
-  };
+  }, [id]);
+
+  // Clean up the object URL when component unmounts or when we hide content
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+    };
+  }, [pdfUrl]);
+
+  // Reset PDF state when toggling content visibility
+  useEffect(() => {
+    if (!showContent && pdfUrl) {
+      URL.revokeObjectURL(pdfUrl);
+      setPdfUrl(null);
+    }
+  }, [showContent, pdfUrl]);
+
+  // Fetch PDF when showing content
+  useEffect(() => {
+    if (showContent && book?.book_file_name && !pdfUrl) {
+      fetchPdf();
+    }
+  }, [showContent, book?.book_file_name, pdfUrl, fetchPdf]);
+
+  useEffect(() => {
+    const fetchCover = async () => {
+      try {
+        const response = await booksAPI.getCover(id);
+        const blob = new Blob([response.data], {
+          type: response.headers["content-type"],
+        });
+        const url = URL.createObjectURL(blob);
+        setCoverUrl(url);
+      } catch (error) {
+        console.error("Error loading cover:", error);
+        setCoverUrl(defaultImagePath);
+      }
+    };
+
+    fetchCover();
+
+    return () => {
+      if (coverUrl && coverUrl !== defaultImagePath) {
+        URL.revokeObjectURL(coverUrl);
+      }
+    };
+  }, [id, coverUrl]);
 
   const handleToggleBookmark = async () => {
     try {
@@ -99,34 +127,35 @@ const BookDetails = () => {
       setIsDownloading(true);
 
       // If we already have the blob, use it directly
-      if (pdfBlob) {
-        const url = URL.createObjectURL(pdfBlob);
+      if (pdfUrl) {
         const link = document.createElement("a");
-        link.href = url;
+        link.href = pdfUrl;
         link.setAttribute("download", `${book.title}.pdf`);
         document.body.appendChild(link);
         link.click();
         link.parentNode.removeChild(link);
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(pdfUrl);
         toast.success("Download started successfully");
         setIsDownloading(false);
         return;
       }
 
-      // Otherwise, fetch the PDF
+      // Otherwise, fetch the file
       const response = await booksAPI.download(id);
-      const blob = new Blob([response.data]);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
+      const blob = new Blob([response.data], {
+        type: response.headers["content-type"] || "application/pdf",
+      });
 
       // Get the filename from Content-Disposition header or fallback to book title
       const contentDisposition = response.headers["content-disposition"];
       const filename = contentDisposition
         ? contentDisposition.split("filename=")[1].replace(/"/g, "")
         : `${book.title}.pdf`;
-      link.setAttribute("download", filename);
 
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename);
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
@@ -177,11 +206,11 @@ const BookDetails = () => {
           <div className="md:w-1/3">
             <div className="aspect-[3/4] relative">
               <img
-                src={book.cover_image_path || "/placeholder-book.jpg"}
-                alt={book.title}
+                src={coverUrl || defaultImagePath}
+                alt={book?.title}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  e.target.src = "/placeholder-book.jpg";
+                  e.target.src = defaultImagePath;
                   e.target.onerror = null;
                 }}
               />
@@ -259,13 +288,13 @@ const BookDetails = () => {
           </div>
         </div>
 
-        {/* Custom PDF Viewer */}
-        {showContent && book.file_path && (
+        {/* PDF Viewer */}
+        {showContent && book.book_file_name && (
           <div className="border-t border-gray-200 p-6">
             <div className="flex justify-between items-center mb-4">
               <div className="text-sm text-gray-500">PDF Viewer</div>
             </div>
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center">
               {pdfError ? (
                 <div className="p-8 text-center text-red-600">
                   {pdfError}
@@ -275,24 +304,29 @@ const BookDetails = () => {
                     </Button>
                   </div>
                 </div>
-              ) : !pdfObjectUrl ? (
+              ) : !pdfUrl ? (
                 <div className="p-8 text-center">
                   <div className="mb-4">Loading PDF...</div>
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
                 </div>
               ) : (
                 <div className="w-full flex flex-col items-center">
-                  {/* PDF Viewer */}
-                  <div className="w-full max-w-4xl h-screen max-h-[600px] border border-gray-300 rounded">
+                  <div className="w-full max-w-4xl border border-gray-300 rounded bg-white">
                     <iframe
-                      src={pdfObjectUrl}
-                      className="w-full h-full"
-                      title={`${book.title} PDF`}
+                      src={pdfUrl}
+                      className="w-full h-[600px]"
+                      title="PDF Viewer"
                     />
                   </div>
                   <div className="mt-4 text-sm text-gray-500">
-                    If the PDF doesn't display correctly, try using the download
-                    button.
+                    If you prefer, you can also{" "}
+                    <button
+                      onClick={handleDownload}
+                      className="text-blue-600 hover:underline"
+                    >
+                      download the PDF
+                    </button>{" "}
+                    to view it offline.
                   </div>
                 </div>
               )}

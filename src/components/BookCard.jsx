@@ -1,22 +1,49 @@
-import { memo } from "react";
+import { memo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { BookmarkIcon as BookmarkOutline } from "@heroicons/react/24/outline";
 import { BookmarkIcon as BookmarkSolid } from "@heroicons/react/24/solid";
+import { booksAPI } from "../services/api";
 
 const BookCard = memo(({ book, isBookmarked, onToggleBookmark }) => {
-  const { id, title, author, category_name, cover_image_path } = book;
+  const { id, title, author, category_name } = book;
+  const [coverUrl, setCoverUrl] = useState(null);
+  const defaultImagePath = "/book.png";
+
+  useEffect(() => {
+    const fetchCover = async () => {
+      try {
+        const response = await booksAPI.getCover(id);
+        const blob = new Blob([response.data], {
+          type: response.headers["content-type"],
+        });
+        const url = URL.createObjectURL(blob);
+        setCoverUrl(url);
+      } catch (error) {
+        console.error("Error loading cover:", error);
+        setCoverUrl(defaultImagePath);
+      }
+    };
+
+    fetchCover();
+
+    return () => {
+      if (coverUrl && coverUrl !== defaultImagePath) {
+        URL.revokeObjectURL(coverUrl);
+      }
+    };
+  }, [id, coverUrl]);
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
       <Link to={`/books/${id}`} className="block">
         <div className="aspect-w-3 aspect-h-4 relative">
           <img
-            src={cover_image_path || "/placeholder-book.jpg"}
+            src={coverUrl || defaultImagePath}
             alt={title}
             className="object-cover w-full h-full"
             loading="lazy"
             onError={(e) => {
-              e.target.src = "/placeholder-book.jpg";
+              e.target.src = defaultImagePath;
               e.target.onerror = null;
             }}
           />

@@ -1,11 +1,10 @@
-import { lazy } from "react";
+import { lazy, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
   UsersIcon,
   BookOpenIcon,
   FolderIcon,
-  ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import { booksAPI, usersAPI, categoriesAPI } from "../../services/api";
 import manProfilePic from "../../assets/man.png";
@@ -13,11 +12,8 @@ import womanProfilePic from "../../assets/woman.png";
 
 const AdminLayout = lazy(() => import("../../layouts/AdminLayout"));
 
-const StatCard = ({ title, value, icon: Icon, to }) => (
-  <Link
-    to={to}
-    className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
-  >
+const StatCard = ({ title, value, icon: Icon }) => (
+  <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
     <div className="flex items-center">
       <div className="flex-shrink-0">
         <div className="p-3 bg-blue-100 rounded-full">
@@ -31,8 +27,63 @@ const StatCard = ({ title, value, icon: Icon, to }) => (
         </div>
       </div>
     </div>
-  </Link>
+  </div>
 );
+
+const RecentBookItem = ({ book }) => {
+  const [coverUrl, setCoverUrl] = useState(null);
+  const defaultImagePath = "/book.png";
+
+  useEffect(() => {
+    const fetchCover = async () => {
+      try {
+        const response = await booksAPI.getCover(book.id);
+        const blob = new Blob([response.data], {
+          type: response.headers["content-type"],
+        });
+        const url = URL.createObjectURL(blob);
+        setCoverUrl(url);
+      } catch (error) {
+        console.error("Error loading cover:", error);
+        setCoverUrl(defaultImagePath);
+      }
+    };
+
+    fetchCover();
+
+    return () => {
+      if (coverUrl && coverUrl !== defaultImagePath) {
+        URL.revokeObjectURL(coverUrl);
+      }
+    };
+  }, [book.id, coverUrl]);
+
+  return (
+    <Link
+      key={book.id}
+      to={`/books/${book.id}`}
+      className="block hover:bg-gray-50 -mx-4 px-4 py-2"
+    >
+      <div className="flex items-center">
+        <div className="flex-shrink-0">
+          <img
+            src={coverUrl || defaultImagePath}
+            alt={book.title}
+            className="w-10 h-10 object-cover rounded"
+            onError={(e) => {
+              e.target.src = defaultImagePath;
+              e.target.onerror = null;
+            }}
+          />
+        </div>
+        <div className="ml-4">
+          <p className="text-sm font-medium text-gray-900">{book.title}</p>
+          <p className="text-sm text-gray-500">{book.author}</p>
+        </div>
+      </div>
+    </Link>
+  );
+};
 
 const Dashboard = () => {
   const { data: users = [] } = useQuery({
@@ -51,31 +102,32 @@ const Dashboard = () => {
   });
 
   const readerCount = users.filter((user) => user.role === "reader").length;
+  const adminCount = users.filter((user) => user.role === "admin").length;
 
   const stats = [
     {
-      title: "Total Users",
-      value: users.length,
+      id: 1,
+      title: "Librarian",
+      value: adminCount,
       icon: UsersIcon,
-      to: "/admin/users",
     },
     {
+      id: 2,
+      title: "Readers",
+      value: readerCount,
+      icon: UsersIcon,
+    },
+    {
+      id: 3,
       title: "Total Books",
       value: books.length,
       icon: BookOpenIcon,
-      to: "/admin/books",
     },
     {
+      id: 4,
       title: "Categories",
       value: categories.length,
       icon: FolderIcon,
-      to: "/admin/categories",
-    },
-    {
-      title: "Readers",
-      value: readerCount,
-      icon: ChartBarIcon,
-      to: "/admin/users",
     },
   ];
 
@@ -83,7 +135,7 @@ const Dashboard = () => {
     <AdminLayout>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
-          <StatCard key={stat.title} {...stat} />
+          <StatCard key={stat.id} {...stat} />
         ))}
       </div>
 
@@ -107,37 +159,15 @@ const Dashboard = () => {
                       (a, b) => new Date(b.created_at) - new Date(a.created_at)
                     )
                     .map((book) => (
-                      <Link
-                        key={book.id}
-                        to={`/books/${book.id}`}
-                        className="block hover:bg-gray-50 -mx-4 px-4 py-2"
-                      >
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0">
-                            <img
-                              src={book.cover_image_path}
-                              alt={book.title}
-                              className="w-10 h-10 object-cover rounded"
-                            />
-                          </div>
-                          <div className="ml-4">
-                            <p className="text-sm font-medium text-gray-900">
-                              {book.title}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              {book.author}
-                            </p>
-                          </div>
-                        </div>
-                      </Link>
+                      <RecentBookItem key={book.id} book={book} />
                     ))}
                 </div>
               </div>
 
-              {/* Recent Users */}
+              {/* Recent Readers */}
               <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Recently Registered Users
+                  Recently Registered Readers
                 </h3>
                 <div className="space-y-4">
                   {users
@@ -152,12 +182,16 @@ const Dashboard = () => {
                         className="flex items-center -mx-4 px-4 py-2"
                       >
                         <div className="flex-shrink-0">
-                          <img src=
-                          {user?.gender === "female"
-                            ? womanProfilePic
-                            : manProfilePic}
-                          alt="Profile" className="w-8 h-8 rounded-full
-                          object-cover border-2 border-blue-100" />
+                          <img
+                            src={
+                              user?.gender === "female"
+                                ? womanProfilePic
+                                : manProfilePic
+                            }
+                            alt="Profile"
+                            className="w-8 h-8 rounded-full
+                          object-cover border-2 border-blue-100"
+                          />
                         </div>
                         <div className="ml-4">
                           <p className="text-sm font-medium text-gray-900">

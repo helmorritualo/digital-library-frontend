@@ -15,16 +15,23 @@ const Home = () => {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const { data: books = [], isLoading: isLoadingBooks } = useQuery({
-    queryKey: ["books", currentPage],
-    queryFn: () =>
-      booksAPI
-        .getAll(currentPage, ITEMS_PER_PAGE)
-        .then((res) => res.data.books),
-    keepPreviousData: true, // Keep previous page data while fetching next page
-  });
+  const { data: booksData = { books: [] }, isLoading: isLoadingBooks } =
+    useQuery({
+      queryKey: ["books", currentPage, searchQuery, selectedCategory],
+      queryFn: async () => {
+        try {
+          if (searchQuery || selectedCategory) {
+            return booksAPI.search(searchQuery, selectedCategory);
+          }
+          return booksAPI.getAll(currentPage, ITEMS_PER_PAGE);
+        } catch {
+          return { books: [] }; // Return default structure on error
+        }
+      },
+      keepPreviousData: true,
+    });
 
-  const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
+  const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: () => categoriesAPI.getAll().then((res) => res.data.categories),
   });
@@ -50,20 +57,10 @@ const Home = () => {
         toast.success("Book added to bookmarks");
       }
       refetchBookmarks();
-    } catch (error) {
-      toast.error(`Failed to update bookmark ${error}`);
+    } catch {
+      toast.error("Failed to update bookmark");
     }
   };
-
-  const filteredBooks = books.filter((book) => {
-    const matchesSearch =
-      !searchQuery ||
-      book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      book.author.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      !selectedCategory || book.category_name === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -126,12 +123,12 @@ const Home = () => {
             <div className="col-span-full text-center py-12">
               Loading books...
             </div>
-          ) : filteredBooks.length === 0 ? (
+          ) : !booksData?.books?.length ? (
             <div className="col-span-full text-center py-12">
               No books found. Try adjusting your search or filters.
             </div>
           ) : (
-            filteredBooks.map((book) => (
+            booksData.books.map((book) => (
               <BookCard
                 key={book.id}
                 book={book}
@@ -143,7 +140,7 @@ const Home = () => {
         </div>
 
         {/* Pagination */}
-        {!isLoadingBooks && filteredBooks.length > 0 && (
+        {!isLoadingBooks && booksData?.books?.length > 0 && (
           <div className="mt-8 flex justify-center gap-2">
             <Button
               variant="outline"
@@ -158,7 +155,7 @@ const Home = () => {
             <Button
               variant="outline"
               onClick={() => setCurrentPage((prev) => prev + 1)}
-              disabled={filteredBooks.length < ITEMS_PER_PAGE}
+              disabled={booksData?.books?.length < ITEMS_PER_PAGE}
             >
               Next
             </Button>

@@ -31,10 +31,10 @@ const MainLayout = () => {
 
   const adminNavigation = [
     { name: "Dashboard", href: "/admin", icon: ChartBarIcon },
-    { name: "Users", href: "/admin/users", icon: UsersIcon },
     { name: "Books", href: "/admin/books", icon: BookOpenIcon },
     { name: "Categories", href: "/admin/categories", icon: FolderIcon },
-    { name: "Profile", href: "admin/profile", icon: UserIcon },
+    { name: "Readers", href: "/admin/users", icon: UsersIcon },
+    { name: "Profile", href: "/admin/profile", icon: UserIcon },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -49,7 +49,9 @@ const MainLayout = () => {
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-[0.9rem]">
-            <h1 className="text-2xl font-bold text-blue-600">Digital Library</h1>
+            <h1 className="text-2xl font-bold text-blue-600">
+              Digital Library
+            </h1>
             <button
               className="lg:hidden"
               onClick={() => setIsSidebarOpen(false)}
