@@ -22,32 +22,6 @@ const validateResponse = (response) => {
   return response;
 };
 
-// Helper function to construct full URLs for files and images
-const getFullUrl = (path) => {
-  if (!path) return null;
-  if (path.startsWith("http")) return path;
-
-  // Extract filename and token
-  const filename = path.split("/").pop();
-  const token = localStorage.getItem("token");
-
-  // Use the documented API endpoints
-  const isImage = /\.(jpg|jpeg|png|gif)$/i.test(filename);
-  const bookId = path.match(/\/books\/(\d+)\//)?.[1];
-
-  if (!bookId) {
-    console.warn("Invalid path format, missing book ID:", path);
-    return null;
-  }
-
-  const endpoint = isImage
-    ? `/books/${bookId}/cover`
-    : `/books/${bookId}/download`;
-
-  const fullUrl = `${BASE_URL}${endpoint}`;
-  return token ? `${fullUrl}?token=${token}` : fullUrl;
-};
-
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
@@ -78,23 +52,6 @@ api.interceptors.response.use(
       ) {
         validateResponse(response);
       }
-
-      // Transform file paths in response
-      if (response.data?.book) {
-        response.data.book = {
-          ...response.data.book,
-          cover_image_path: getFullUrl(response.data.book.cover_image_path),
-          file_path: getFullUrl(response.data.book.file_path),
-        };
-      }
-      if (response.data?.books) {
-        response.data.books = response.data.books.map((book) => ({
-          ...book,
-          cover_image_path: getFullUrl(book.cover_image_path),
-          file_path: getFullUrl(book.file_path),
-        }));
-      }
-
       return response;
     } catch (error) {
       return Promise.reject(error);
@@ -111,8 +68,7 @@ api.interceptors.response.use(
 );
 
 export const booksAPI = {
-  getAll: (page = 1, limit = 12) =>
-    api.get(`/books/all?page=${page}&limit=${limit}`),
+  getAll: () => api.get(`/books/all?`),
   getById: (id) =>
     api.get(`/books/${id}`).then((res) => {
       if (!res.data || !res.data.book) {
@@ -144,28 +100,23 @@ export const booksAPI = {
   update: (id, data) => {
     const form = new FormData();
 
-    // Handle regular fields
-    const textFields = ["title", "author", "description", "category_id"];
-    textFields.forEach((field) => {
-      if (
-        data[field] !== null &&
-        data[field] !== undefined &&
-        data[field] !== ""
-      ) {
-        // Convert to string for consistency
-        form.append(field, String(data[field]));
+    // If data is already FormData, use it directly
+    if (data instanceof FormData) {
+      return api.put(`/books/${id}`, data);
+    }
+
+    // Otherwise, create new FormData from object
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        if (key === "book_file" || key === "cover_image") {
+          if (value instanceof File) {
+            form.append(key, value);
+          }
+        } else {
+          form.append(key, value);
+        }
       }
     });
-
-    // Handle file fields
-    if (data.book_file instanceof File) {
-      form.append("book_file", data.book_file);
-    }
-    if (data.cover_image instanceof File) {
-      form.append("cover_image", data.cover_image);
-    }
-
-    // Use the correct endpoint
     return api.put(`/books/${id}`, form);
   },
   delete: (id) => api.delete(`/books/${id}`),
@@ -198,7 +149,7 @@ export const categoriesAPI = {
   getBooks: (categoryName) =>
     api.get(`/categories/books/${encodeURIComponent(categoryName)}`),
   create: (data) => api.post("/categories", data),
-  update: (id, data) => api.put(`/categories/${id}`, data), // Send data directly without transforming
+  update: (id, data) => api.put(`/categories/${id}`, data),
   delete: (id) => api.delete(`/categories/${id}`),
 };
 

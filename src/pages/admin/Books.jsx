@@ -19,6 +19,16 @@ const BookForm = ({ onSubmit, initialData = null, onCancel }) => {
     cover_image: null,
   });
   const [errors, setErrors] = useState({});
+  const [previewCover, setPreviewCover] = useState(null);
+
+  // Add effect to handle file preview
+  useEffect(() => {
+    if (formData.cover_image) {
+      const objectUrl = URL.createObjectURL(formData.cover_image);
+      setPreviewCover(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    }
+  }, [formData.cover_image]);
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
@@ -29,13 +39,7 @@ const BookForm = ({ onSubmit, initialData = null, onCancel }) => {
     const newErrors = {};
     const maxFileSize = 50 * 1024 * 1024; // 50MB
     const maxImageSize = 5 * 1024 * 1024; // 5MB
-    const allowedFileTypes = [
-      "application/pdf",
-      "application/epub+zip",
-      "application/msword",
-      "application/vnd.amazon.ebook",
-      "application/rtf",
-    ];
+    const allowedFileTypes = ["application/pdf"];
     const allowedImageTypes = ["image/jpeg", "image/png", "image/gif"];
 
     if (!formData.title) {
@@ -46,38 +50,30 @@ const BookForm = ({ onSubmit, initialData = null, onCancel }) => {
       newErrors.author = "Author is required";
     }
 
+    // Only validate files if they are provided or if this is a new book
     if (!initialData) {
       if (!formData.book_file) {
         newErrors.book_file = "Book file is required";
-      } else if (formData.book_file.size > maxFileSize) {
-        newErrors.book_file = "File size must not exceed 50MB";
-      } else if (!allowedFileTypes.includes(formData.book_file.type)) {
-        newErrors.book_file =
-          "File must be in PDF, EPUB, DOC, MOBI, RTF, or AZW format";
       }
-
       if (!formData.cover_image) {
         newErrors.cover_image = "Cover image is required";
-      } else if (formData.cover_image.size > maxImageSize) {
+      }
+    }
+
+    // Validate files if they are provided
+    if (formData.book_file) {
+      if (formData.book_file.size > maxFileSize) {
+        newErrors.book_file = "File size must not exceed 50MB";
+      } else if (!allowedFileTypes.includes(formData.book_file.type)) {
+        newErrors.book_file = "File must be in PDF";
+      }
+    }
+
+    if (formData.cover_image) {
+      if (formData.cover_image.size > maxImageSize) {
         newErrors.cover_image = "Image size must not exceed 5MB";
       } else if (!allowedImageTypes.includes(formData.cover_image.type)) {
         newErrors.cover_image = "Image must be in JPEG, PNG, or GIF format";
-      }
-    } else {
-      if (
-        formData.book_file &&
-        (formData.book_file.size > maxFileSize ||
-          !allowedFileTypes.includes(formData.book_file.type))
-      ) {
-        newErrors.book_file = "Invalid file format or size exceeds 50MB";
-      }
-
-      if (
-        formData.cover_image &&
-        (formData.cover_image.size > maxImageSize ||
-          !allowedImageTypes.includes(formData.cover_image.type))
-      ) {
-        newErrors.cover_image = "Invalid image format or size exceeds 5MB";
       }
     }
 
@@ -103,7 +99,32 @@ const BookForm = ({ onSubmit, initialData = null, onCancel }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validateForm()) {
-      onSubmit(formData);
+      const form = new FormData();
+
+      // Always include text fields
+      form.append("title", formData.title);
+      form.append("author", formData.author);
+      form.append("description", formData.description);
+
+      // Make sure category_id is properly handled
+      if (formData.category_id) {
+        form.append("category_id", formData.category_id);
+      }
+
+      // Only append files if they have been changed or if this is a new book
+      if (formData.book_file) {
+        form.append("book_file", formData.book_file);
+      }
+      if (formData.cover_image) {
+        form.append("cover_image", formData.cover_image);
+      }
+
+      // If this is an update, include the ID
+      if (initialData) {
+        form.append("id", initialData.id);
+      }
+
+      onSubmit(form);
     }
   };
 
@@ -173,6 +194,18 @@ const BookForm = ({ onSubmit, initialData = null, onCancel }) => {
           error={errors.cover_image}
           help="Allowed formats: JPEG, PNG, GIF (max 5MB)"
         />
+        {previewCover && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Cover Preview
+            </label>
+            <img
+              src={previewCover}
+              alt="Cover Preview"
+              className="h-20 w-20 rounded object-cover"
+            />
+          </div>
+        )}
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -313,6 +346,7 @@ const Books = () => {
       toast.success("Book updated successfully");
     },
     onError: (error) => {
+      console.error("Update Book Error:", error);
       const errorMessage =
         error.response?.data?.error ||
         error.response?.data?.message ||

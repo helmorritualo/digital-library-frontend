@@ -30,7 +30,11 @@ const BookDetails = () => {
 
   const { data: bookmarks = [], refetch: refetchBookmarks } = useQuery({
     queryKey: ["bookmarks"],
-    queryFn: () => bookmarksAPI.getAll().then((res) => res.data.books),
+    queryFn: () =>
+      bookmarksAPI.getAll().then((res) => {
+        // Ensure we extract the books array properly
+        return res.data.books || [];
+      }),
   });
 
   const isBookmarked = bookmarks.some((b) => b.id === Number(id));
@@ -250,17 +254,18 @@ const BookDetails = () => {
 
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 mb-2">
+                  Category
+                </h2>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                  {book.category_name}
+                </span>
+              </div>
+
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 mb-2">
                   Details
                 </h2>
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">
-                      Category
-                    </dt>
-                    <dd className="mt-1 text-sm text-gray-900">
-                      {book.category_name}
-                    </dd>
-                  </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">
                       Added on

@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersAPI } from "../../services/api";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
+import manProfilePic from "../../assets/man.png";
+import womanProfilePic from "../../assets/woman.png";
 
 const AdminLayout = lazy(() => import("../../layouts/AdminLayout"));
 const Button = lazy(() => import("../../components/Button"));
@@ -126,59 +128,68 @@ const Users = () => {
                 </tr>
               ) : (
                 filteredUsers
-                .filter((user) => user.role !== "admin")
-                .map((user) => (
-                  <tr key={user.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <span className="text-blue-600 font-medium">
-                              {user.username.charAt(0).toUpperCase()}
-                            </span>
+                  .filter((user) => user.role !== "admin")
+                  .map((user) => (
+                    <tr key={user.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            <div className="h-10 w-10 rounded-full flex items-center justify-center">
+                              <img
+                                src={
+                                  user?.gender === "female"
+                                    ? womanProfilePic
+                                    : manProfilePic
+                                }
+                                alt="Profile"
+                                className="w-10 h-10 rounded-full
+                           object-cover border-2 border-blue-100"
+                              />
+                            </div>
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {user.full_name}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {user.username}
+                            </div>
                           </div>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {user.full_name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {user.username}
-                          </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            user.role === "admin"
+                              ? "bg-purple-100 text-purple-800"
+                              : "bg-green-100 text-green-800"
+                          }`}
+                        >
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {user.email}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          user.role === "admin"
-                            ? "bg-purple-100 text-purple-800"
-                            : "bg-green-100 text-green-800"
-                        }`}
-                      >
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{user.email}</div>
-                      <div className="text-sm text-gray-500">
-                        {user.contact_number || "No contact"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(user.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-5 whitespace-nowrap text-right text-sm font-medium">
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => handleDeleteUser(user.id)}
-                      >
-                        Expel
-                      </Button>
-                    </td>
-                  </tr>
-                ))
+                        <div className="text-sm text-gray-500">
+                          {user.contact_number || "No contact"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap text-right text-sm font-medium">
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => handleDeleteUser(user.id)}
+                        >
+                          Expel
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
               )}
             </tbody>
           </table>

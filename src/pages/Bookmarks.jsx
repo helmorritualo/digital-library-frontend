@@ -5,13 +5,21 @@ import toast from "react-hot-toast";
 
 const Bookmarks = () => {
   const {
-    data: bookmarkData = { books: [] },
+    data: bookmarkData,
     isLoading,
     refetch: refetchBookmarks,
   } = useQuery({
     queryKey: ["bookmarks"],
-    queryFn: () => bookmarksAPI.getAll(),
+    queryFn: () =>
+      bookmarksAPI.getAll().then((res) => {
+        // Ensure we extract the books array properly, preserving all book details
+        return res.data.books || [];
+      }),
   });
+
+  const bookmarkedBooks = Array.isArray(bookmarkData)
+    ? bookmarkData
+    : bookmarkData?.books || [];
 
   const handleToggleBookmark = async (bookId) => {
     try {
@@ -36,7 +44,7 @@ const Bookmarks = () => {
 
       {isLoading ? (
         <div className="text-center py-12">Loading bookmarks...</div>
-      ) : !bookmarkData?.books?.length ? (
+      ) : !bookmarkedBooks.length ? (
         <div className="text-center py-12">
           <p className="text-gray-600">You haven't bookmarked any books yet.</p>
           <p className="text-sm text-gray-500 mt-2">
@@ -45,7 +53,7 @@ const Bookmarks = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {bookmarkData.books.map((book) => (
+          {bookmarkedBooks.map((book) => (
             <BookCard
               key={book.id}
               book={book}

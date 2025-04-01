@@ -1,4 +1,4 @@
-import { useState, Suspense, lazy } from "react";
+import { useState, Suspense, lazy, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { booksAPI, categoriesAPI, bookmarksAPI } from "../services/api";
@@ -8,47 +8,72 @@ const BookCard = lazy(() => import("../components/BookCard"));
 const Button = lazy(() => import("../components/Button"));
 const Input = lazy(() => import("../components/Input"));
 
-const ITEMS_PER_PAGE = 12;
-
 const Home = () => {
+  const [inputValue, setInputValue] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
 
   const { data: booksData = { books: [] }, isLoading: isLoadingBooks } =
     useQuery({
-      queryKey: ["books", currentPage, searchQuery, selectedCategory],
+      queryKey: ["books", searchQuery, selectedCategory],
       queryFn: async () => {
         try {
-          if (searchQuery || selectedCategory) {
-            return booksAPI.search(searchQuery, selectedCategory);
+          if (selectedCategory && !searchQuery) {
+            // Use the category-specific endpoint
+            return categoriesAPI
+              .getBooks(selectedCategory)
+              .then((res) => res.data);
+          } else if (searchQuery) {
+            // Use search endpoint with optional category parameter
+            return booksAPI
+              .search(searchQuery, selectedCategory)
+              .then((res) => res.data);
+          } else {
+            // Get all books
+            return booksAPI.getAll().then((res) => res.data);
           }
-          return booksAPI.getAll(currentPage, ITEMS_PER_PAGE);
-        } catch {
+        } catch (error) {
+          console.error("Error fetching books:", error);
           return { books: [] }; // Return default structure on error
         }
       },
       keepPreviousData: true,
+      refetchOnWindowFocus: false,
+      staleTime: 60000, // Data remains fresh for 1 minute
     });
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: () => categoriesAPI.getAll().then((res) => res.data.categories),
+    refetchOnWindowFocus: false,
+    staleTime: 300000, // Categories data remains fresh for 5 minutes
   });
 
   const { data: bookmarks = [], refetch: refetchBookmarks } = useQuery({
     queryKey: ["bookmarks"],
-    queryFn: () => bookmarksAPI.getAll().then((res) => res.data.books),
+    queryFn: () =>
+      bookmarksAPI.getAll().then((res) => {
+        // Ensure we extract the books array properly
+        return res.data.books || [];
+      }),
+    refetchOnWindowFocus: false,
+    staleTime: 60000, // Bookmarks data remains fresh for 1 minute
   });
 
-  const handleSearch = async (e) => {
+  const bookmarkedBooks = Array.isArray(bookmarks) ? bookmarks : [];
+
+  const handleSearch = (e) => {
     e.preventDefault();
-    setCurrentPage(1); // Reset to first page on new search
+    setSearchQuery(inputValue);
   };
+
+  const handleCategorySelect = useCallback((categoryName) => {
+    setSelectedCategory(categoryName);
+  }, []);
 
   const handleToggleBookmark = async (bookId) => {
     try {
-      const isBookmarked = bookmarks.some((book) => book.id === bookId);
+      const isBookmarked = bookmarkedBooks.some((book) => book.id === bookId);
       if (isBookmarked) {
         await bookmarksAPI.remove(bookId);
         toast.success("Book removed from bookmarks");
@@ -71,8 +96,8 @@ const Home = () => {
             <Input
               type="text"
               placeholder="Search by title or author..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
               icon={<MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />}
             />
           </div>
@@ -88,10 +113,7 @@ const Home = () => {
             <Button
               variant={!selectedCategory ? "primary" : "outline"}
               size="sm"
-              onClick={() => {
-                setSelectedCategory("");
-                setCurrentPage(1);
-              }}
+              onClick={() => handleCategorySelect("")}
             >
               All
             </Button>
@@ -104,10 +126,7 @@ const Home = () => {
                     : "outline"
                 }
                 size="sm"
-                onClick={() => {
-                  setSelectedCategory(category.category_name);
-                  setCurrentPage(1);
-                }}
+                onClick={() => handleCategorySelect(category.category_name)}
               >
                 {category.category_name}
               </Button>
@@ -132,35 +151,12 @@ const Home = () => {
               <BookCard
                 key={book.id}
                 book={book}
-                isBookmarked={bookmarks.some((b) => b.id === book.id)}
+                isBookmarked={bookmarkedBooks.some((b) => b.id === book.id)}
                 onToggleBookmark={handleToggleBookmark}
               />
             ))
           )}
         </div>
-
-        {/* Pagination */}
-        {!isLoadingBooks && booksData?.books?.length > 0 && (
-          <div className="mt-8 flex justify-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-            <span className="px-4 py-2 text-sm font-medium text-gray-700">
-              Page {currentPage}
-            </span>
-            <Button
-              variant="outline"
-              onClick={() => setCurrentPage((prev) => prev + 1)}
-              disabled={booksData?.books?.length < ITEMS_PER_PAGE}
-            >
-              Next
-            </Button>
-          </div>
-        )}
       </Suspense>
     </div>
   );
